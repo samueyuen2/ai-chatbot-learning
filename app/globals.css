@@ -47,3 +47,74 @@ a {
     color-scheme: dark;
   }
 }
+
+.chatbox {
+  width: 360px;
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  font-family: system-ui, sans-serif;
+}
+
+.chatbox__header {
+  padding: 16px;
+  font-weight: 600;
+  border-bottom: 1px solid #eee;
+}
+
+.chatbox__messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.chatbox__message {
+  width: fit-content;
+  max-width: 80%;
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+
+.chatbox__message--user {
+  margin-left: auto;
+  background: #2563eb;
+  color: white;
+}
+
+.chatbox__message--assistant {
+  background: #f1f1f1;
+  color: #222;
+}
+
+.chatbox__input-area {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #eee;
+}
+
+.chatbox__input-area input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.chatbox__input-area button {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.chatbox__input-area button:hover {
+  background: #1d4ed8;
+}
