@@ -79,6 +79,12 @@ export async function POST(req: Request) {
           for await (const event of response.stream) {
             const text = event.contentBlockDelta?.delta?.text;
             if (!text) { continue; }
+            console.log("Bedrock chunk received");
+
+            // Uncomment this if you want to test the stop button
+            // await new Promise((resolve) => { setTimeout(resolve, 750); });
+
+            console.log("Sending chunk to frontend");
             const data = `data: ${JSON.stringify({ text })}\n\n`;
             controller.enqueue(encoder.encode(data));
           }
