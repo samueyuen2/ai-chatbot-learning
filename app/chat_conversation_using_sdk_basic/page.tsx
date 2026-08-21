@@ -9,13 +9,13 @@ type Message = {
   text: string;
 };
 
-const sendMessageToModel = async (messages: Message[]) => {
-  const res = await fetch("/api/chat_conversation_using_sdk", {
+const sendMessageToModel = async (payload: { message: Message, messages: Message[] }) => {
+  const res = await fetch("/api/chat_conversation_using_sdk_basic", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(messages),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -28,13 +28,7 @@ const sendMessageToModel = async (messages: Message[]) => {
 export default function Chat() {
   const [chatboxHeader, setChatboxHeader] = useState("Chat");
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      role: "assistant",
-      text: "Hi! How can I help?",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -44,17 +38,12 @@ export default function Chat() {
 
     const userMessage: Message = { id: Date.now(), role: "user", text, };
 
-    const entireConversationArray = [...messages, userMessage]
-    setMessages(entireConversationArray);
+    setMessages((prev) => [...prev, userMessage]);
     setMessage("");
     setIsLoading(true);
 
-    // Trying to test an app, remember one thing for me, x = 13579246810
-
     try {
-      console.log("Before sending to the LLM , messages.length:", messages.length + " | message[message.length - 1]:", messages[messages.length - 1])
-      console.log("Before sending to the LLM , entireConversationArray.length:", entireConversationArray.length + " | entireConversationArray[entireConversationArray.length - 1]:", entireConversationArray[entireConversationArray.length - 1])
-      const res: { response: string } = await sendMessageToModel(entireConversationArray);
+      const res: { response: string } = await sendMessageToModel({ message: userMessage, messages });
 
       if (res?.response) {
         const assistantMessage: Message = {

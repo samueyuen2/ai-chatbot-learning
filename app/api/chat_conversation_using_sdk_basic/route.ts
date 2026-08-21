@@ -10,7 +10,9 @@ import {
   BedrockRuntimeClient,
   ConversationRole,
   ConverseCommand,
+  Message,
 } from "@aws-sdk/client-bedrock-runtime";
+import { text } from "stream/consumers";
 
 async function SendConversationtoBedrock(bedRockRuntimeClient: any, modelId: any, message: any, system_prompt: any,) {
   try {
@@ -42,24 +44,17 @@ async function SendConversationtoBedrock(bedRockRuntimeClient: any, modelId: any
       );
       throw caught;
     }
+    else {
+      console.log(caught)
+    }
   }
 }
 
 export async function POST(req: Request) {
-
-  // Step 1: Create the Amazon Bedrock runtime client
-  const entireConversationArray = await req.json()
-
-  // Credentials will be automatically loaded from the environment
+  const { message: newMessage, messages: messageHistory } = await req.json()
   const bedRockRuntimeClient = new BedrockRuntimeClient({ region: "eu-north-1", });
-
-  // Step 2. Define the parameters required enable Amazon Bedrock to use a tool when formulating its response.
-
-  // The Bedrock Model ID.
-  // const modelId = "amazon.nova-lite-v1:0";
   const modelId = "eu.amazon.nova-micro-v1:0"
 
-  // The system prompt to help Amazon Bedrock craft it's response.
   const system_prompt = [
     {
       text: `
@@ -103,17 +98,27 @@ export async function POST(req: Request) {
 
               Example:
               User: x = 123, y = 321. What's x + y?
-              Assistant: x + y = **444**.
+              Assistant: x + y = 444.
               `
     },
   ];
-  //  The user's question.
-  const message = [
-    {
-      role: "user",
-      content: [{ text: JSON.stringify(entireConversationArray) || "Who are you?" }],
-    },
-  ];
+
+  const message = (!!messageHistory && messageHistory.length > 1) ?
+    !!newMessage
+      ?
+      [...messageHistory, newMessage].map((m: { id: number, role: string, text: string }) => {
+        return { role: m.role, content: [{ text: m.text }] }
+      }) :
+      messageHistory.map((m: { id: number, role: string, text: string }) => {
+        return { role: m.role, content: [{ text: m.text }] }
+      })
+    :
+    [
+      !!newMessage ?
+        { role: newMessage.role, content: [{ text: newMessage.text }] } :
+        { role: ConversationRole.USER, content: [{ text: "Who are you?" }] },
+    ];
+  console.log("Near sending, message:", message)
 
   // 3. Send the request to Amazon Bedrock, and returns the response.
   const response = await SendConversationtoBedrock(bedRockRuntimeClient, modelId, message, system_prompt);
