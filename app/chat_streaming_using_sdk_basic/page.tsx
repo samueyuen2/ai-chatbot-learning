@@ -18,8 +18,10 @@ export default function Chat() {
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
   const handleStop = async () => {
+    console.log("STOP clicked");
     if (!readerRef.current) { return; }
     await readerRef.current.cancel();
+    console.log("Frontend reader cancelled");
     readerRef.current = null;
     setIsLoading(false);
   };
@@ -36,6 +38,7 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
+      console.log("Sending request");
       const res = await fetch(
         "/api/chat_streaming_using_sdk_basic",
         {
@@ -45,6 +48,7 @@ export default function Chat() {
         }
       );
 
+      console.log("Response received");
       if (!res.ok) { throw new Error("Failed to send message"); }
       if (!res.body) { throw new Error("No response body"); }
 
@@ -54,10 +58,11 @@ export default function Chat() {
       let buffer = "";
 
       while (true) {
+        console.log("Waiting for reader.read()");
         const { value, done } = await reader.read();
+        if (done) { console.log("Reader done"); break; }
 
-        if (done) { break; }
-
+        console.log("Chunk received");
         buffer += decoder.decode(value, { stream: true, });
         const events = buffer.split("\n\n");
         buffer = events.pop() ?? "";
@@ -82,6 +87,7 @@ export default function Chat() {
     } catch (error) {
       console.error("Chat error:", error);
     } finally {
+      console.log("Frontend request finished");
       readerRef.current = null;
       setIsLoading(false);
     }
