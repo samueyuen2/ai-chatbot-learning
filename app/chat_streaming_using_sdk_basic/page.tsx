@@ -1,7 +1,7 @@
 "use client";
 
 import styles from "./../page.module.css";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type Message = {
   id: number;
@@ -9,33 +9,20 @@ type Message = {
   text: string;
 };
 
-const sendMessageToModel = async (messages: Message[]) => {
-  const res = await fetch("/api/chat_streaming_using_sdk_basic", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(messages),
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to send message");
-  }
-
-  return res.json();
-};
-
 export default function Chat() {
-  const [chatboxHeader, setChatboxHeader] = useState("Chat");
+  const [chatboxHeader] = useState("Chat");
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      role: "assistant",
-      text: "Hi! How can I help?",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+
+  const handleStop = async () => {
+    if (!readerRef.current) { return; }
+    await readerRef.current.cancel();
+    readerRef.current = null;
+    setIsLoading(false);
+  };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -43,39 +30,59 @@ export default function Chat() {
     if (!text || isLoading) { return; }
 
     const userMessage: Message = { id: Date.now(), role: "user", text, };
-
-    const entireConversationArray = [...messages, userMessage]
-    setMessages(entireConversationArray);
+    const assistantId = Date.now() + 1;
+    setMessages((prev) => [...prev, userMessage, { id: assistantId, role: "assistant", text: "", },]);
     setMessage("");
     setIsLoading(true);
 
-    // Trying to test an app, remember one thing for me, x = 13579246810
-
     try {
-      console.log("Before sending to the LLM , messages.length:", messages.length + " | message[message.length - 1]:", messages[messages.length - 1])
-      console.log("Before sending to the LLM , entireConversationArray.length:", entireConversationArray.length + " | entireConversationArray[entireConversationArray.length - 1]:", entireConversationArray[entireConversationArray.length - 1])
-      const res: { response: string } = await sendMessageToModel(entireConversationArray);
+      const res = await fetch(
+        "/api/chat_streaming_using_sdk_basic",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", },
+          body: JSON.stringify({ message: userMessage, messages, }),
+        }
+      );
 
-      if (res?.response) {
-        const assistantMessage: Message = {
-          id: Date.now() + 1,
-          role: "assistant",
-          text: res.response,
-        };
+      if (!res.ok) { throw new Error("Failed to send message"); }
+      if (!res.body) { throw new Error("No response body"); }
 
-        setMessages((prev) => [...prev, assistantMessage]);
+      const reader = res.body.getReader();
+      readerRef.current = reader;
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+
+        if (done) { break; }
+
+        buffer += decoder.decode(value, { stream: true, });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+
+        for (const event of events) {
+          if (!event.startsWith("data:")) { continue; }
+          const json = event.slice("data:".length).trim();
+          const data = JSON.parse(json);
+          if (!data.text) { continue; }
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId
+                ? {
+                  ...msg,
+                  text: msg.text + data.text,
+                }
+                : msg
+            )
+          );
+        }
       }
     } catch (error) {
       console.error("Chat error:", error);
-
-      const errorMessage: Message = {
-        id: Date.now() + 1,
-        role: "assistant",
-        text: "Sorry, something went wrong. Please try again.",
-      };
-
-      setMessages((prev) => [...prev, errorMessage]);
     } finally {
+      readerRef.current = null;
       setIsLoading(false);
     }
   };
@@ -97,7 +104,7 @@ export default function Chat() {
                   key={msg.id}
                   className={`chatbox__message chatbox__message--${msg.role}`}
                 >
-                  {`${msg.text}`}
+                  {msg.text}
                 </div>
               ))}
 
@@ -121,9 +128,15 @@ export default function Chat() {
                 disabled={isLoading}
               />
 
-              <button type="submit" disabled={isLoading}>
-                {isLoading ? "..." : "Send"}
-              </button>
+              {isLoading ? (
+                <button type="button" onClick={handleStop}>
+                  Stop
+                </button>
+              ) : (
+                <button type="submit">
+                  Send
+                </button>
+              )}
             </form>
           </div>
         </div>
