@@ -94,59 +94,83 @@ export default function Chat() {
   };
 
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <div className={styles.intro}>
-          <h1>Chat Page</h1>
-
-          <div className="chatbox">
-            <div className="chatbox__header">
-              {chatboxHeader}
+    // <div className={styles.page}>
+    //   <main className={styles.main}>
+          <div className="chat__card">
+            <div className="chat__header">
+              <div className="chat__profile">
+                <div className="chat__avatar">AI</div>
+                <div>
+                  <h2>{chatboxHeader}</h2>
+                  <span>Online</span>
+                </div>
+              </div>
             </div>
 
-            <div className="chatbox__messages">
+            <div className="chat__messages">
+              {messages.length === 0 && (
+                <div className="chat__empty">
+                  <div className="chat__empty-icon">💬</div>
+                  <h3>Start a conversation</h3>
+                  <p>Ask me anything and I'll respond in real time.</p>
+                </div>
+              )}
+
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`chatbox__message chatbox__message--${msg.role}`}
+                  className={`chat__row chat__row--${msg.role}`}
                 >
-                  {msg.text}
+                  {msg.role === "assistant" && (
+                    <div className="chat__bubble-avatar">AI</div>
+                  )}
+
+                  <div className={`chat__bubble chat__bubble--${msg.role}`}>
+                    {msg.text}
+                  </div>
                 </div>
               ))}
 
               {isLoading && (
-                <div className="chatbox__message chatbox__message--assistant">
-                  Thinking...
+                <div className="chat__row chat__row--assistant">
+                  <div className="chat__bubble-avatar">AI</div>
+                  <div className="chat__bubble chat__bubble--assistant">
+                    <div className="typing">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            <form
-              className="chatbox__input-area"
-              onSubmit={handleSubmit}
-            >
+            <form className="chat__input" onSubmit={handleSubmit}>
               <input
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type a message..."
+                placeholder="Message Chat..."
                 aria-label="Message"
                 disabled={isLoading}
               />
 
               {isLoading ? (
-                <button type="button" onClick={handleStop}>
+                <button
+                  type="button"
+                  onClick={handleStop}
+                  className="chat__button chat__button--stop"
+                >
                   Stop
                 </button>
               ) : (
-                <button type="submit">
+                <button type="submit" className="chat__button">
                   Send
                 </button>
               )}
             </form>
           </div>
-        </div>
-      </main>
-    </div>
+    //   </main>
+    // </div>
   );
 }
